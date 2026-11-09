@@ -34,11 +34,10 @@ pip install -r requirements.txt
 python modelagem_frota.py
 ```
 
-A saída vai para o terminal (cópia em `saida.txt`) e os gráficos são salvos em `graficos/`.
+A saída vai para o terminal e os gráficos são salvos em `graficos/`.
 
 ## Arquivos
 
 - `modelagem_frota.py` - código das duas etapas e da avaliação
-- `saida.txt` - saída completa do programa
 - `graficos/` - gráficos usados no relatório
 - `relatorio/` - relatório (HTML e PDF)
