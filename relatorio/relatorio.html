@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Modelagem da Frota - Citizen Assist AI</title>
+<style>
+  @page { size: A4; margin: 18mm 17mm 18mm 17mm; }
+  :root { --ink:#1d1d1b; --muted:#52514e; --line:#d9d8d3; --accent:#2a78d6; --soft:#f3f6fb; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; color: var(--ink); font-size: 10.3pt; line-height: 1.5; background:#fff; margin:0; }
+  h1 { font-size: 22pt; margin: 0 0 6px; }
+  h2 { font-size: 14pt; color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 3px; margin: 22px 0 10px; break-after: avoid; }
+  h3 { font-size: 11.3pt; margin: 16px 0 6px; break-after: avoid; }
+  p { margin: 5px 0 8px; text-align: justify; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 12px; font-size: 9.2pt; break-inside: avoid; }
+  th, td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; }
+  th { background: var(--soft); }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  figure { margin: 8px 0 14px; text-align: center; break-inside: avoid; }
+  figure img { max-width: 100%; max-height: 72mm; }
+  figcaption { font-size: 8.8pt; color: var(--muted); margin-top: 3px; }
+  .eq { font-family: "DejaVu Sans Mono", monospace; background: var(--soft); border-left: 3px solid var(--accent); padding: 6px 10px; margin: 6px 0 10px; font-size: 9.4pt; white-space: pre; break-inside: avoid; line-height: 1.45; }
+  .box { background: var(--soft); border: 1px solid #c9dbf3; padding: 8px 12px; margin: 8px 0 12px; break-inside: avoid; }
+  .saida { font-family: "DejaVu Sans Mono", monospace; font-size: 8pt; white-space: pre; border: 1px solid var(--line); padding: 6px 10px; margin: 6px 0 12px; line-height: 1.35; break-inside: avoid; }
+  .quebra { break-before: page; }
+  .capa { height: 245mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .capa .topo { font-size: 10pt; color: var(--muted); letter-spacing: .5px; }
+  .capa h1 { font-size: 26pt; line-height: 1.2; margin-top: 60mm; }
+  .capa .sub { font-size: 13pt; color: var(--muted); }
+  ul, ol { margin: 4px 0 8px 18px; padding: 0; }
+  li { margin-bottom: 3px; }
+  small { color: var(--muted); }
+  .mapa { display: grid; grid-template-columns: repeat(3, 70px); grid-template-rows: repeat(3, 34px); gap: 4px; justify-content: center; margin: 8px 0; font-size: 9pt; }
+  .mapa div { border: 1px solid var(--line); background: var(--soft); display: flex; align-items: center; justify-content: center; }
+  .mapa .vazio { border: none; background: none; }
+</style>
+</head>
+<body>
+
+<section class="capa">
+  <div class="topo">FIAP · GLOBAL SOLUTION 2026.2 · CITIZENTECH · MODELAGEM MATEMÁTICA E COMPUTACIONAL</div>
+  <div>
+    <h1>Mobilidade Urbana Inteligente<br>Modelagem da frota de ônibus</h1>
+    <p class="sub">Recuperação da distribuição atual com sistemas lineares e proposta de redistribuição por meio de uma transformação linear, implementadas em Python</p>
+  </div>
+  <div>
+    <table style="width:auto">
+      <tr><th>Integrante</th><th>RM</th></tr>
+      <tr><td>André Santos de Azevedo</td><td>RM572236</td></tr>
+      <tr><td>Guilherme Henrique de Almeida</td><td>RM568708</td></tr>
+      <tr><td>Renan de Castro Albuquerque</td><td>RM570532</td></tr>
+    </table>
+    <p><small>Arquivos entregues: <b>modelagem_frota.py</b> (código), <b>saida.txt</b> (saída completa do programa), <b>requirements.txt</b> (bibliotecas), pasta <b>graficos/</b> e este relatório.</small></p>
+  </div>
+</section>
+
+<h2 class="quebra">1. Resumo</h2>
+<p>A empresa municipal de transporte perdeu os registros de quantos ônibus estavam em cada um dos quatro centros operacionais (Norte, Sul, Leste e Oeste), mas guardou quatro indicadores consolidados. Com eles montamos um sistema linear 4×4, mostramos que ele tem solução única e recuperamos a frota atual. Em seguida comparamos essa frota com a demanda do horário de pico e propusemos uma redistribuição, escrita como uma transformação linear T(x) = M·x.</p>
+<div class="box">
+<b>Principais resultados</b>
+<ul>
+  <li>Distribuição atual recuperada: <b>Norte 12, Sul 20, Leste 16, Oeste 24</b> (total 72). O sistema tem det(A) = 3 ≠ 0, então a solução é única.</li>
+  <li>Necessidade pelo pico: <b>Norte 14, Sul 19, Leste 18, Oeste 21</b>. A soma também é 72, então a frota atual é suficiente e o problema é só de distribuição.</li>
+  <li>Antes da política, <b>160 passageiros ficavam sem vaga</b> (80 no Norte e 80 no Leste), enquanto Sul e Oeste tinham 160 vagas sobrando.</li>
+  <li>A política move apenas <b>4 ônibus</b> (Oeste→Norte: 2, Sul→Leste: 1, Oeste→Leste: 1). Depois dela, nenhum passageiro fica sem vaga e o total de ônibus continua 72.</li>
+  <li>A matriz M tem todas as entradas ≥ 0 e cada coluna soma 1. Essas duas propriedades provam que o total se mantém e que não aparecem alocações negativas.</li>
+</ul>
+</div>
+
+<h2>2. Etapa 1 — Diagnóstico e modelagem da situação atual</h2>
+
+<h3>a) Variáveis</h3>
+<p>Usamos uma variável para cada centro operacional, representando a quantidade de ônibus alocados nele:</p>
+<table style="width:auto">
+  <tr><th>Variável</th><th>Significado</th><th>Domínio</th></tr>
+  <tr><td>N</td><td>ônibus na região Norte</td><td>inteiro, N ≥ 0</td></tr>
+  <tr><td>S</td><td>ônibus na região Sul</td><td>inteiro, S ≥ 0</td></tr>
+  <tr><td>L</td><td>ônibus na região Leste</td><td>inteiro, L ≥ 0</td></tr>
+  <tr><td>O</td><td>ônibus na região Oeste</td><td>inteiro, O ≥ 0</td></tr>
+</table>
+<p>Juntas elas formam o vetor da frota <b>x = (N, S, L, O)</b>, que usamos também na Etapa 2.</p>
+
+<h3>b) Modelo matemático</h3>
+<p>Cada registro do Relatório I vira uma equação linear:</p>
+<table>
+  <tr><th>Registro</th><th>Equação</th></tr>
+  <tr><td>A frota regular tem 72 ônibus</td><td>N + S + L + O = 72</td></tr>
+  <tr><td>Norte + Oeste + dobro do Sul = 76</td><td>N + 2S + O = 76</td></tr>
+  <tr><td>Sul + dobro do Leste = 52</td><td>S + 2L = 52</td></tr>
+  <tr><td>Norte + Leste + dobro do Oeste = 76</td><td>N + L + 2O = 76</td></tr>
+</table>
+<p>Como o enunciado avisa, só o primeiro registro é uma contagem direta de ônibus (a frota total). Os outros três são <b>relações matemáticas</b> entre as quantidades: o "76" do segundo registro, por exemplo, não é um número de ônibus de alguma região, e sim o resultado da combinação N + 2S + O. Por isso nenhum registro dá a frota de uma região sozinho, e é preciso resolver as quatro equações em conjunto.</p>
+
+<h3>c) Forma matricial</h3>
+<p>O sistema fica na forma <b>A·x = b</b>:</p>
+<div class="eq">    A               x         b
+[ 1  1  1  1 ]   [ N ]     [ 72 ]
+[ 1  2  0  1 ] · [ S ]  =  [ 76 ]
+[ 0  1  2  0 ]   [ L ]     [ 52 ]
+[ 1  0  1  2 ]   [ O ]     [ 76 ]</div>
+<p>Cada linha de A é um registro e cada coluna é uma região. O coeficiente a<sub>ij</sub> diz quantas vezes os ônibus da região j entram no registro i. Por exemplo, o 2 na linha 2 e coluna S é o "dobro do Sul".</p>
+
+<h3>d) Existe uma única distribuição?</h3>
+<p>Escalonamos a matriz ampliada [A | b] usando apenas operações do tipo L<sub>i</sub> ← L<sub>i</sub> + k·L<sub>j</sub>, que não alteram o determinante:</p>
+<div class="eq">[ 1  1  1  1 | 72 ]
+[ 1  2  0  1 | 76 ]   L2 ← L2 − L1
+[ 0  1  2  0 | 52 ]
+[ 1  0  1  2 | 76 ]   L4 ← L4 − L1
+
+[ 1  1  1  1 | 72 ]
+[ 0  1 −1  0 |  4 ]
+[ 0  1  2  0 | 52 ]   L3 ← L3 − L2
+[ 0 −1  0  1 |  4 ]   L4 ← L4 + L2
+
+[ 1  1  1  1 | 72 ]
+[ 0  1 −1  0 |  4 ]
+[ 0  0  3  0 | 48 ]
+[ 0  0 −1  1 |  8 ]   L4 ← L4 + (1/3)·L3
+
+[ 1  1  1  1 | 72 ]
+[ 0  1 −1  0 |  4 ]
+[ 0  0  3  0 | 48 ]
+[ 0  0  0  1 | 24 ]</div>
+<p>A matriz ficou triangular superior com pivôs 1, 1, 3 e 1, todos diferentes de zero. Daí tiramos três conclusões equivalentes:</p>
+<ul>
+  <li><b>Determinante:</b> det(A) = 1 · 1 · 3 · 1 = <b>3 ≠ 0</b>. Logo A é inversível e x = A<sup>−1</sup>·b é a única solução.</li>
+  <li><b>Posto (Teorema de Rouché-Capelli):</b> posto(A) = posto([A | b]) = 4, igual ao número de incógnitas. O sistema é <b>possível e determinado</b>.</li>
+  <li><b>Independência linear:</b> as quatro linhas de A são linearmente independentes, ou seja, nenhum registro é combinação dos outros. Cada um traz uma informação nova, e quatro informações independentes bastam para quatro incógnitas.</li>
+</ul>
+<p>Fazendo a substituição de baixo para cima: O = 24; 3L = 48, então L = 16; S − L = 4, então S = 20; N = 72 − 20 − 16 − 24 = 12.</p>
+<p>Se o determinante fosse zero, o sistema teria infinitas soluções (algum registro seria redundante) ou nenhuma (registros contraditórios), e não seria possível reconstruir a frota. Não é o caso aqui.</p>
+
+<h3>e) Implementação em Python</h3>
+<p>A função <code>etapa1()</code> do arquivo <code>modelagem_frota.py</code> monta A e b com NumPy, calcula o determinante e os postos com <code>np.linalg.det</code> e <code>np.linalg.matrix_rank</code>, resolve com <code>np.linalg.solve</code> e confere pela inversa. Trecho principal:</p>
+<div class="eq">A = np.array([[1, 1, 1, 1],
+              [1, 2, 0, 1],
+              [0, 1, 2, 0],
+              [1, 0, 1, 2]])
+b = np.array([72, 76, 52, 76])
+x = np.linalg.solve(A, b)          # [12. 20. 16. 24.]</div>
+<p>Saída do programa:</p>
+<div class="saida">det(A) = 3.0
+posto(A) = 4
+posto([A|b]) = 4
+Sistema possível e determinado, então a solução é única
+
+Distribuição encontrada:
+Norte = 12 ônibus
+Sul = 20 ônibus
+Leste = 16 ônibus
+Oeste = 24 ônibus
+
+Todos inteiros? True
+Todos >= 0? True</div>
+<p>A solução é inteira e não negativa, então respeita as restrições do problema sem precisar de arredondamento.</p>
+
+<div style="break-inside: avoid">
+<h3>f) Verificação</h3>
+<p>Substituindo x = (12, 20, 16, 24) em cada registro:</p>
+<table>
+  <tr><th>Registro</th><th>Conta</th><th class="n">Obtido</th><th class="n">Esperado</th><th>Situação</th></tr>
+  <tr><td>Frota total</td><td>12 + 20 + 16 + 24</td><td class="n">72</td><td class="n">72</td><td>OK</td></tr>
+  <tr><td>N + 2S + O</td><td>12 + 40 + 24</td><td class="n">76</td><td class="n">76</td><td>OK</td></tr>
+  <tr><td>S + 2L</td><td>20 + 32</td><td class="n">52</td><td class="n">52</td><td>OK</td></tr>
+  <tr><td>N + L + 2O</td><td>12 + 16 + 48</td><td class="n">76</td><td class="n">76</td><td>OK</td></tr>
+</table>
+</div>
+<p>O programa faz a mesma conferência calculando A·x e comparando com b. Todos os registros são satisfeitos.</p>
+
+<h2>3. Etapa 2 — Política de redistribuição</h2>
+
+<div class="box">
+<b>Hipóteses do modelo (Relatório II)</b>
+<ul>
+  <li>Cada ônibus atende só a região em que está alocado durante o período analisado.</li>
+  <li>Cada passageiro precisa de uma vaga, e cada ônibus oferece 40 vagas no período.</li>
+  <li>A frota total não pode ser ampliada: continua com 72 ônibus.</li>
+  <li>As quantidades de ônibus devem ser inteiras e não negativas, antes e depois da redistribuição.</li>
+  <li>Os ônibus podem ser compartilhados entre os centros operacionais (exigência da prefeitura).</li>
+</ul>
+</div>
+<h3>a) Ônibus necessários por região</h3>
+<p>Cada ônibus atende 40 passageiros no período e cada passageiro precisa de uma vaga. Então a necessidade da região é o número de passageiros dividido por 40, arredondado para cima (para ninguém ficar sem vaga):</p>
+<div class="eq">necessidade = ⌈ passageiros / 40 ⌉</div>
+<table>
+  <tr><th>Região</th><th class="n">Passageiros</th><th class="n">Conta</th><th class="n">Ônibus necessários</th></tr>
+  <tr><td>Norte</td><td class="n">560</td><td class="n">560 / 40</td><td class="n">14</td></tr>
+  <tr><td>Sul</td><td class="n">760</td><td class="n">760 / 40</td><td class="n">19</td></tr>
+  <tr><td>Leste</td><td class="n">720</td><td class="n">720 / 40</td><td class="n">18</td></tr>
+  <tr><td>Oeste</td><td class="n">840</td><td class="n">840 / 40</td><td class="n">21</td></tr>
+  <tr><th>Total</th><th class="n">2.880</th><th></th><th class="n">72</th></tr>
+</table>
+<p>Todas as divisões são exatas, então o arredondamento não muda nada aqui. A necessidade total é 72, exatamente a frota disponível. Como a frota não pode ser ampliada, isso mostra que <b>dá para atender toda a demanda só redistribuindo</b>, mas sem nenhuma folga.</p>
+
+<h3>b) Desequilíbrios</h3>
+<table>
+  <tr><th>Região</th><th class="n">Atual</th><th class="n">Necessário</th><th class="n">Saldo</th><th>Situação</th></tr>
+  <tr><td>Norte</td><td class="n">12</td><td class="n">14</td><td class="n">−2</td><td>faltam 2 ônibus (80 passageiros sem vaga)</td></tr>
+  <tr><td>Sul</td><td class="n">20</td><td class="n">19</td><td class="n">+1</td><td>sobra 1 ônibus</td></tr>
+  <tr><td>Leste</td><td class="n">16</td><td class="n">18</td><td class="n">−2</td><td>faltam 2 ônibus (80 passageiros sem vaga)</td></tr>
+  <tr><td>Oeste</td><td class="n">24</td><td class="n">21</td><td class="n">+3</td><td>sobram 3 ônibus</td></tr>
+</table>
+<p>A soma dos saldos é zero: os 4 ônibus que sobram no Sul e no Oeste são exatamente os 4 que faltam no Norte e no Leste.</p>
+
+<h3>c) Política proposta e critérios</h3>
+<p>A prefeitura permite o <b>compartilhamento de veículos entre os centros operacionais</b>: os centros com sobra cedem ônibus aos centros com falta. Definimos como esse compartilhamento acontece a partir de quatro critérios, em ordem de prioridade:</p>
+<ol>
+  <li><b>Atender toda a demanda:</b> cada região termina com pelo menos a sua necessidade.</li>
+  <li><b>Só o excedente é cedido:</b> uma região só cede ônibus que sobram. Sul e Oeste nunca ficam abaixo da própria necessidade.</li>
+  <li><b>Mexer o mínimo possível:</b> movemos exatamente a soma dos déficits (4 ônibus). Não dá para mover menos, porque faltam 4, e mover mais não traria ganho e aumentaria o custo de deslocamento.</li>
+  <li><b>Priorizar regiões vizinhas:</b> como o enunciado não traz mapa, adotamos a hipótese de uma cidade dividida em quatro pontos cardeais. Nela, Norte e Sul são vizinhas de Leste e de Oeste, e Leste e Oeste ficam em lados opostos.</li>
+</ol>
+<div class="mapa">
+  <div class="vazio"></div><div>Norte</div><div class="vazio"></div>
+  <div>Oeste</div><div class="vazio">centro</div><div>Leste</div>
+  <div class="vazio"></div><div>Sul</div><div class="vazio"></div>
+</div>
+<p>Com esses critérios, a política fica assim:</p>
+<table>
+  <tr><th>Transferência</th><th class="n">Ônibus</th><th>Justificativa</th></tr>
+  <tr><td>Oeste → Norte</td><td class="n">2</td><td>regiões vizinhas; o Oeste tem a maior sobra e cobre todo o déficit do Norte</td></tr>
+  <tr><td>Sul → Leste</td><td class="n">1</td><td>regiões vizinhas; é toda a sobra do Sul</td></tr>
+  <tr><td>Oeste → Leste</td><td class="n">1</td><td>única sobra que restou; é o único deslocamento entre lados opostos da cidade</td></tr>
+</table>
+
+<figure>
+  <img src="../graficos/onibus_por_regiao.png" alt="Ônibus por região: atual, necessário e após redistribuição">
+  <figcaption>Figura 1. Ônibus por região na situação atual, na necessidade calculada e após a redistribuição.</figcaption>
+</figure>
+
+<h3>d) A política como transformação linear</h3>
+<p>Escrevemos a política como uma função T: ℝ<sup>4</sup> → ℝ<sup>4</sup> que recebe a frota atual x = (N, S, L, O) e devolve a nova frota y = T(x). A regra é: <b>cada região envia uma fração fixa da sua frota para cada destino</b> e mantém o resto. Para a política acima:</p>
+<div class="eq">T(N, S, L, O) = ( N + (2/24)·O,
+                  (19/20)·S,
+                  L + (1/20)·S + (1/24)·O,
+                  (21/24)·O )</div>
+<p>Cada componente é uma combinação linear de N, S, L e O, sem termo constante. Por isso T é linear, ou seja, vale T(a·u + b·v) = a·T(u) + b·T(v) para quaisquer frotas u, v e números a, b. O programa confere essa propriedade numericamente com T(3u + 2v) = 3T(u) + 2T(v).</p>
+
+<h3>e) Matriz da transformação e significado dos coeficientes</h3>
+<div class="eq">                origem →
+               N      S       L      O
+destino  N [   1      0       0     2/24 ]
+   ↓     S [   0    19/20     0      0   ]
+         L [   0     1/20     1     1/24 ]
+         O [   0      0       0    21/24 ]</div>
+<p>O coeficiente <b>m<sub>ij</sub></b> (linha i, coluna j) é a <b>fração da frota da região j que vai para a região i</b>. Lendo a matriz por colunas:</p>
+<ul>
+  <li><b>Coluna N:</b> (1, 0, 0, 0). O Norte não cede ônibus e mantém 100% da frota.</li>
+  <li><b>Coluna S:</b> o Sul mantém 19/20 = 95% e envia 1/20 = 5% ao Leste. Aplicado aos 20 ônibus atuais, 1 ônibus muda de região.</li>
+  <li><b>Coluna L:</b> (0, 0, 1, 0). O Leste não cede ônibus.</li>
+  <li><b>Coluna O:</b> o Oeste mantém 21/24 = 87,5%, envia 2/24 ≈ 8,3% ao Norte e 1/24 ≈ 4,2% ao Leste. Sobre 24 ônibus, isso dá 21 ficando, 2 indo ao Norte e 1 ao Leste.</li>
+</ul>
+<p>Os elementos da diagonal são a fração que permanece na própria região. Os elementos fora da diagonal são as transferências. Uma matriz com entradas não negativas e colunas que somam 1 é chamada de <b>matriz estocástica por colunas</b> (ou matriz de transição), a mesma usada em cadeias de Markov.</p>
+<p>Aplicando a matriz à frota atual:</p>
+<div class="eq">M · (12, 20, 16, 24) = ( 12 + 2,  19,  16 + 1 + 1,  21 ) = (14, 19, 18, 21)</div>
+<p>O resultado é exatamente a necessidade calculada no item a.</p>
+
+<h3>f) Demonstrações</h3>
+<p><b>Propriedade 1: o total de ônibus se mantém.</b> Seja y = M·x. O total depois da transformação é</p>
+<div class="eq">Σᵢ yᵢ = Σᵢ Σⱼ mᵢⱼ·xⱼ = Σⱼ xⱼ · (Σᵢ mᵢⱼ) = Σⱼ xⱼ · 1 = Σⱼ xⱼ</div>
+<p>Trocamos a ordem das somas e usamos que cada coluna de M soma 1 (1 + 0 + 0 + 0 = 1; 0 + 19/20 + 1/20 + 0 = 1; 0 + 0 + 1 + 0 = 1; 2/24 + 0 + 1/24 + 21/24 = 1). Em notação matricial, com <b>u</b> = (1, 1, 1, 1): uᵀ·M = uᵀ, então uᵀ·(M·x) = uᵀ·x. O total depois é igual ao total antes <b>para qualquer frota x</b>, não só para a frota atual. No caso estudado, 72 = 72.</p>
+<p><b>Propriedade 2: não aparecem alocações negativas.</b> Cada componente da nova frota é</p>
+<div class="eq">yᵢ = mᵢ₁·x₁ + mᵢ₂·x₂ + mᵢ₃·x₃ + mᵢ₄·x₄</div>
+<p>Todos os coeficientes mᵢⱼ são ≥ 0 (pela construção, são frações de ônibus) e todas as frotas xⱼ são ≥ 0. Um produto de números não negativos é não negativo, e uma soma de números não negativos também. Logo yᵢ ≥ 0 para toda região i. Assim como a anterior, essa propriedade vale para qualquer frota de entrada não negativa.</p>
+<p><b>Conferência no programa.</b> Além das contas para a frota atual, o código testa outras três frotas, escolhidas por nós, para mostrar que as propriedades não dependem da entrada:</p>
+<div class="saida">Nova distribuição T(x) = M.x:
+Norte = 14.0
+Sul = 19.0
+Leste = 18.0
+Oeste = 21.0
+Todos inteiros? True
+Todos >= 0? True
+
+f) Verificações:
+Soma das colunas de M: [1. 1. 1. 1.]
+Todas as colunas somam 1? True
+Todos os elementos >= 0? True
+Total antes: 72 | Total depois: 72
+Nova distribuição = necessidade? True
+
+Teste com outras frotas:
+x = [10 30 20 12] soma = 72 | T(x) = [11.  28.5 22.  10.5] soma = 72.0 | menor valor = 10.5
+x = [ 0 40  5 27] soma = 72 | T(x) = [ 2.25 38.    8.12 23.62] soma = 72.0 | menor valor = 2.25
+x = [50 10 10  2] soma = 72 | T(x) = [50.17  9.5  10.58  1.75] soma = 72.0 | menor valor = 1.75
+T(3u + 2v) = 3T(u) + 2T(v)? True
+
+det(M) = 0.8312 (diferente de 0, então M é inversível)</div>
+<p>Como det(M) = (19/20)·(21/24) ≈ 0,831 ≠ 0, a transformação também é inversível. Com M<sup>−1</sup> é possível recuperar a distribuição anterior a partir da nova, o que é útil para voltar à operação normal fora do horário de pico.</p>
+
+<h2>4. Avaliação do resultado</h2>
+<p>Para avaliar a intervenção, comparamos vagas oferecidas (ônibus × 40) com passageiros em cada região, antes e depois:</p>
+<table>
+  <tr><th rowspan="2">Região</th><th class="n" colspan="3">Antes</th><th class="n" colspan="3">Depois</th></tr>
+  <tr><th class="n">Vagas</th><th class="n">Sem vaga</th><th class="n">Ocupação</th><th class="n">Vagas</th><th class="n">Sem vaga</th><th class="n">Ocupação</th></tr>
+  <tr><td>Norte</td><td class="n">480</td><td class="n">80</td><td class="n">116,7%</td><td class="n">560</td><td class="n">0</td><td class="n">100%</td></tr>
+  <tr><td>Sul</td><td class="n">800</td><td class="n">0</td><td class="n">95,0%</td><td class="n">760</td><td class="n">0</td><td class="n">100%</td></tr>
+  <tr><td>Leste</td><td class="n">640</td><td class="n">80</td><td class="n">112,5%</td><td class="n">720</td><td class="n">0</td><td class="n">100%</td></tr>
+  <tr><td>Oeste</td><td class="n">960</td><td class="n">0</td><td class="n">87,5%</td><td class="n">840</td><td class="n">0</td><td class="n">100%</td></tr>
+  <tr><th>Total</th><th class="n">2.880</th><th class="n">160</th><th></th><th class="n">2.880</th><th class="n">0</th><th></th></tr>
+</table>
+<figure>
+  <img src="../graficos/ocupacao_antes_depois.png" alt="Ocupação por região antes e depois da redistribuição">
+  <figcaption>Figura 2. Ocupação dos ônibus no horário de pico. Acima de 100% significa passageiros sem vaga.</figcaption>
+</figure>
+<ul>
+  <li><b>160 passageiros por pico deixam de ficar sem vaga</b> (5,6% da demanda total), sem comprar nenhum ônibus.</li>
+  <li>As 160 vagas ociosas no Sul e no Oeste passam a ser usadas onde faltavam.</li>
+  <li>O custo operacional é baixo: só 4 dos 72 ônibus (5,6% da frota) mudam de região, e só 1 cruza a cidade.</li>
+</ul>
+
+<h2>5. Limitações do modelo</h2>
+<ul>
+  <li><b>Números inteiros:</b> as frações da matriz foram calculadas para a frota atual (por exemplo, 1/20 do Sul só dá 1 ônibus inteiro porque o Sul tem 20). Os testes com outras frotas mostram que, para outra entrada, T(x) pode ter valores quebrados. A transformação garante o total e a não negatividade para qualquer entrada, mas o resultado inteiro só é garantido na situação estudada. Se a frota mudar, a matriz precisa ser recalculada.</li>
+  <li><b>Sem folga:</b> depois da redistribuição todas as regiões ficam com 100% de ocupação. Qualquer aumento de demanda ou ônibus quebrado volta a deixar passageiros sem vaga. Como a frota não pode crescer, essa margem só viria de outras medidas (por exemplo, escalonar horários de pico).</li>
+  <li><b>Demanda fixa:</b> o modelo usa uma única estimativa do horário de pico e considera que cada ônibus atende só a sua região. Na prática a demanda muda ao longo do dia e há linhas que cruzam regiões.</li>
+  <li><b>Vizinhança suposta:</b> o critério de proximidade depende do desenho da cidade que adotamos, já que o enunciado não traz mapa.</li>
+</ul>
+
+<h2>6. Conclusão</h2>
+<p>Os quatro registros que sobraram da falha formam um sistema linear com determinante 3, portanto com solução única: Norte 12, Sul 20, Leste 16 e Oeste 24. A frota é exatamente do tamanho necessário para o pico, mas está mal distribuída. A política proposta, representada por uma matriz estocástica por colunas, transfere 4 ônibus, mantém o total em 72, nunca gera valores negativos e elimina os 160 passageiros sem vaga.</p>
+<p>Dentro do Citizen Assist AI, que orienta o cidadão sobre serviços públicos, esse tipo de modelo entra na categoria de serviços urbanos: a mesma matriz que a prefeitura usa para remanejar a frota pode alimentar a informação que o assistente passa para quem pergunta sobre o transporte na sua região.</p>
+
+<h2>7. Como executar</h2>
+<div class="eq">pip install numpy matplotlib
+python modelagem_frota.py</div>
+<p>O programa imprime as duas etapas e a avaliação no terminal (a saída completa está em <code>saida.txt</code>) e salva os gráficos na pasta <code>graficos/</code>.</p>
+
+</body>
+</html>
